@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RD SLA Mapper</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a1a1a;background:#f5f5f2;min-height:100vh;padding:2rem 1rem}
+.app{max-width:820px;margin:0 auto}
+.steps{display:flex;gap:0;margin-bottom:2rem;border:1px solid #e0ddd5;border-radius:12px;overflow:hidden}
+.step-tab{flex:1;padding:10px 6px;text-align:center;font-size:12px;color:#888;background:#f0ede6;border-right:1px solid #e0ddd5;cursor:default;transition:background 0.15s}
+.step-tab:last-child{border-right:none}
+.step-tab.active{background:#fff;color:#1a1a1a;font-weight:500}
+.step-tab.done{color:#0F6E56}
+.step-num{display:block;font-size:16px;font-weight:500;margin-bottom:2px}
+.card{background:#fff;border:1px solid #e0ddd5;border-radius:12px;padding:1.25rem}
+.card+.card{margin-top:1rem}
+h2{font-size:18px;font-weight:500;margin-bottom:4px}
+.sub{font-size:13px;color:#666;margin-bottom:1.25rem;line-height:1.5}
+.field-row{display:grid;grid-template-columns:140px 1fr;align-items:center;gap:8px;margin-bottom:10px}
+.field-row label{font-size:13px;color:#666}
+select,input[type=text],textarea{width:100%;padding:7px 10px;font-size:13px;border:1px solid #d0cdc5;border-radius:8px;background:#fff;color:#1a1a1a;font-family:inherit}
+select:focus,input[type=text]:focus,textarea:focus{outline:none;border-color:#1D9E75}
+textarea{resize:vertical;min-height:60px;line-height:1.5}
+.btn{padding:8px 18px;font-size:13px;font-weight:500;border:1px solid #d0cdc5;border-radius:8px;background:#fff;color:#1a1a1a;cursor:pointer;font-family:inherit}
+.btn:hover{background:#f5f5f2}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.btn-primary{background:#1D9E75;color:#fff;border-color:#1D9E75}
+.btn-primary:hover{background:#0F6E56;border-color:#0F6E56}
+.btn-danger{color:#c0392b;border-color:#f5c6c6}
+.btn-danger:hover{background:#fff5f5}
+.btn-sm{padding:5px 12px;font-size:12px}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem}
+.badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:500}
+.badge-info{background:#e6f1fb;color:#185FA5}
+.badge-warn{background:#faeeda;color:#854F0B}
+.badge-ok{background:#eaf3de;color:#3B6D11}
+.badge-err{background:#fcebeb;color:#A32D2D}
+.alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:1rem;line-height:1.5}
+.alert-warn{background:#faeeda;color:#854F0B;border:1px solid #FAC775}
+.alert-info{background:#e6f1fb;color:#185FA5;border:1px solid #B5D4F4}
+.alert-err{background:#fcebeb;color:#A32D2D;border:1px solid #F7C1C1}
+.alert-ok{background:#eaf3de;color:#3B6D11;border:1px solid #C0DD97}
+.upload-area{border:2px dashed #d0cdc5;border-radius:12px;padding:2.5rem;text-align:center;cursor:pointer;transition:border-color 0.15s}
+.upload-area:hover{border-color:#1D9E75}
+.upload-icon{font-size:32px;margin-bottom:8px}
+.table-wrap{overflow-x:auto;margin-top:1rem}
+table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+th{text-align:left;padding:8px 10px;border-bottom:1px solid #e0ddd5;font-weight:500;font-size:12px;color:#666;background:#f5f5f2}
+td{padding:7px 10px;border-bottom:1px solid #e0ddd5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sla-block{background:#f9f8f5;border:1px solid #e0ddd5;border-radius:8px;padding:1rem;margin-bottom:10px}
+.sla-block-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.option-tag{display:inline-flex;align-items:center;gap:5px;background:#e6f1fb;color:#185FA5;border-radius:6px;padding:3px 8px;font-size:12px;margin:3px 3px 3px 0}
+.option-tag button{background:none;border:none;cursor:pointer;color:inherit;font-size:14px;line-height:1;padding:0}
+.tag-input-row{display:flex;gap:6px;margin-top:6px}
+.tag-input-row input{flex:1}
+.progress-bar{height:4px;background:#f0ede6;border-radius:2px;overflow:hidden;margin-bottom:1rem}
+.progress-fill{height:100%;background:#1D9E75;border-radius:2px;transition:width 0.3s}
+.conf-high{color:#3B6D11}
+.conf-med{color:#854F0B}
+.conf-low{color:#A32D2D}
+.result-row-low{background:#faeeda}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem}
+.stat-card{background:#f5f5f2;border-radius:8px;padding:10px 12px;text-align:center}
+.stat-num{font-size:22px;font-weight:500}
+.stat-lbl{font-size:11px;color:#666;margin-top:2px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.5rem">
+    <div style="width:36px;height:36px;background:#1D9E75;border-radius:8px;display:flex;align-items:center;justify-content:center">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 5h12M3 9h8M3 13h5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><circle cx="14" cy="12" r="3" stroke="#fff" stroke-width="1.3"/><path d="M16.5 14.5l1.2 1.2" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/></svg>
+    </div>
+    <div>
+      <div style="font-size:16px;font-weight:500">RD SLA Mapper</div>
+      <div style="font-size:12px;color:#666">Classificação inteligente compatível com importação RD Station</div>
+    </div>
+  </div>
+
+  <div class="steps" id="steps-bar"></div>
+  <div id="main-content"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const STEPS = [
+  {num:'1',label:'Upload'},
+  {num:'2',label:'Colunas'},
+  {num:'3',label:'Campos SLA'},
+  {num:'4',label:'Processar'},
+  {num:'5',label:'Exportar'}
+];
+
+let state = {
+  step: 1,
+  file: null,
+  rows: [],
+  headers: [],
+  colMap: {nome:null, email:null, telefone:null, empresa:null},
+  slaFields: [],
+  results: [],
+  processing: false,
+  progress: 0,
+  errors: []
+};
+
+function renderStepsBar() {
+  const bar = document.getElementById('steps-bar');
+  bar.innerHTML = STEPS.map((s,i) => {
+    const num = i+1;
+    let cls = 'step-tab';
+    if(num === state.step) cls += ' active';
+    else if(num < state.step) cls += ' done';
+    return `<div class="${cls}"><span class="step-num">${num < state.step ? '✓' : s.num}</span>${s.label}</div>`;
+  }).join('');
+}
+
+function render() {
+  renderStepsBar();
+  const c = document.getElementById('main-content');
+  if(state.step===1) c.innerHTML = renderStep1();
+  else if(state.step===2) c.innerHTML = renderStep2();
+  else if(state.step===3) c.innerHTML = renderStep3();
+  else if(state.step===4) c.innerHTML = renderStep4();
+  else if(state.step===5) c.innerHTML = renderStep5();
+  bindEvents();
+}
+
+function renderStep1() {
+  return `
+  <div class="alert alert-info">
+    <strong>Requisitos de importação do RD Station:</strong> E-mail obrigatório por lead · Máx. 255 caracteres por célula · Sem células mescladas · Sem linhas/colunas em branco · Dados em uma única aba · Múltiplas seleções separadas por vírgula
+  </div>
+  <div class="card">
+    <h2>Upload da planilha</h2>
+    <p class="sub">Exporte a base do RD Station do cliente e faça o upload aqui. Formatos aceitos: .xlsx e .csv</p>
+    <div class="upload-area" id="upload-area" onclick="document.getElementById('file-input').click()">
+      <div class="upload-icon">⬆</div>
+      <div style="font-size:14px;font-weight:500;margin-bottom:4px">${state.file ? state.file.name : 'Clique para selecionar o arquivo'}</div>
+      <div style="font-size:12px;color:#666">${state.file ? state.rows.length + ' registros encontrados' : '.xlsx ou .csv exportado do RD Station'}</div>
+    </div>
+    <input type="file" id="file-input" accept=".xlsx,.csv" style="display:none">
+    ${state.errors.length ? `<div class="alert alert-err" style="margin-top:1rem">${state.errors.join('<br>')}</div>` : ''}
+    ${state.file && !state.errors.length ? `<div class="alert alert-ok" style="margin-top:1rem">Arquivo válido — ${state.rows.length} registros, ${state.headers.length} colunas detectadas</div>` : ''}
+    <div class="actions">
+      <button class="btn btn-primary" onclick="goStep2()" ${!state.file || state.errors.length ? 'disabled' : ''}>Próximo →</button>
+    </div>
+  </div>`;
+}
+
+function renderStep2() {
+  const auto = autoDetect();
+  return `
+  <div class="card">
+    <h2>Confirmar colunas-base</h2>
+    <p class="sub">O sistema detectou as colunas abaixo. Confirme ou corrija o mapeamento antes de continuar. O campo <strong>E-mail é obrigatório</strong> para a importação no RD Station.</p>
+    ${['nome','email','telefone','empresa'].map(f => {
+      const detected = auto[f];
+      const current = state.colMap[f] || detected || '';
+      const isEmail = f==='email';
+      return `<div class="field-row">
+        <label>${f.charAt(0).toUpperCase()+f.slice(1)}${isEmail?' *':''}</label>
+        <select onchange="state.colMap['${f}']=this.value">
+          <option value="">(não mapeado)</option>
+          ${state.headers.map(h=>`<option value="${h}" ${(current===h)?'selected':''}>${h}</option>`).join('')}
+        </select>
+      </div>`;
+    }).join('')}
+    ${renderQualityWarnings()}
+    <div class="actions">
+      <button class="btn" onclick="state.step=1;render()">← Voltar</button>
+      <button class="btn btn-primary" onclick="goStep3()">Próximo →</button>
+    </div>
+  </div>`;
+}
+
+function renderQualityWarnings() {
+  const emailCol = state.colMap.email || autoDetect().email;
+  if(!emailCol) return '';
+  const total = state.rows.length;
+  const semEmail = state.rows.filter(r => {
+    const v = r[emailCol];
+    return !v || !String(v).includes('@');
+  }).length;
+  if(!semEmail) return `<div class="alert alert-ok" style="margin-top:1rem">Todos os ${total} registros possuem e-mail válido.</div>`;
+  return `<div class="alert alert-warn" style="margin-top:1rem">
+    <strong>${semEmail} de ${total} registros</strong> não possuem e-mail válido e serão excluídos da exportação final.
+    ${semEmail===total ? '<br><strong>Atenção:</strong> nenhum registro apto para importação.' : ''}
+  </div>`;
+}
+
+function renderStep3() {
+  const fields = state.slaFields;
+  return `
+  <div class="card">
+    <h2>Campos SLA</h2>
+    <p class="sub">Configure cada campo de saída. O nome deve ser idêntico ao campo no RD Station do cliente — maiúsculas, acentos e espaços incluídos.</p>
+    <div class="alert alert-warn">Digite as opções exatamente como cadastradas no RD Station. Qualquer variação pode causar erro ou não mapeamento na importação.</div>
+    <div id="sla-list">
+      ${fields.map((f,i) => renderSlaField(f,i)).join('')}
+    </div>
+    <button class="btn btn-sm" onclick="addSlaField()" style="margin-top:8px">+ Adicionar campo SLA</button>
+    <div class="actions">
+      <button class="btn" onclick="state.step=2;render()">← Voltar</button>
+      <button class="btn btn-primary" onclick="goStep4()" ${!fields.length ? 'disabled' : ''}>Processar com IA →</button>
+    </div>
+  </div>`;
+}
+
+function renderSlaField(f,i) {
+  return `<div class="sla-block">
+    <div class="sla-block-header">
+      <span style="font-weight:500;font-size:13px">Campo SLA ${i+1}</span>
+      <button class="btn btn-sm btn-danger" onclick="removeSlaField(${i})">remover</button>
+    </div>
+    <div class="field-row" style="grid-template-columns:120px 1fr">
+      <label>Nome no RD *</label>
+      <input type="text" placeholder="ex: SLA CARGO" value="${f.name||''}" oninput="state.slaFields[${i}].name=this.value">
+    </div>
+    <div class="field-row" style="grid-template-columns:120px 1fr">
+      <label>Tipo</label>
+      <select onchange="state.slaFields[${i}].type=this.value">
+        <option value="single" ${f.type==='single'?'selected':''}>Seleção única</option>
+        <option value="multiple" ${f.type==='multiple'?'selected':''}>Múltipla seleção</option>
+      </select>
+    </div>
+    <div style="margin-bottom:8px">
+      <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Opções válidas (exatamente como no RD)</label>
+      <div>${(f.options||[]).map((o,oi)=>`<span class="option-tag">${o}<button onclick="removeOption(${i},${oi})">×</button></span>`).join('')}</div>
+      <div class="tag-input-row">
+        <input type="text" placeholder="Digite a opção e pressione Enter" id="opt-input-${i}" onkeydown="if(event.key==='Enter'){addOption(${i},this.value);this.value=''}">
+        <button class="btn btn-sm" onclick="addOption(${i},document.getElementById('opt-input-${i}').value);document.getElementById('opt-input-${i}').value=''">Adicionar</button>
+      </div>
+      ${!f.options||!f.options.length ? '<div style="font-size:11px;color:#A32D2D;margin-top:4px">Ao menos uma opção é obrigatória</div>' : ''}
+    </div>
+    <div>
+      <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">Instrução para a IA (quais colunas considerar)</label>
+      <textarea placeholder="ex: Verificar colunas Cargo, Função e Área. Encaixar na opção mais próxima." oninput="state.slaFields[${i}].instruction=this.value">${f.instruction||''}</textarea>
+    </div>
+  </div>`;
+}
+
+function renderStep4() {
+  const total = aptRows().length;
+  return `
+  <div class="card">
+    <h2>Processamento com IA</h2>
+    <p class="sub">A IA vai classificar cada contato nos campos SLA configurados. Apenas valores da lista de opções serão utilizados.</p>
+    <div class="stats">
+      <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-lbl">registros aptos</div></div>
+      <div class="stat-card"><div class="stat-num">${state.slaFields.length}</div><div class="stat-lbl">campos SLA</div></div>
+      <div class="stat-card"><div class="stat-num">${total * state.slaFields.length}</div><div class="stat-lbl">classificações</div></div>
+    </div>
+    ${state.processing ? `
+      <div class="alert alert-info">Processando registros com IA...</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${state.progress}%"></div></div>
+      <div style="font-size:12px;color:#666;text-align:center">${Math.round(state.progress)}% concluído</div>
+    ` : state.results.length ? `
+      <div class="alert alert-ok">Processamento concluído — ${state.results.length} registros classificados</div>
+    ` : ''}
+    <div class="actions">
+      <button class="btn" onclick="state.step=3;render()" ${state.processing?'disabled':''}>← Voltar</button>
+      ${state.results.length
+        ? `<button class="btn btn-primary" onclick="state.step=5;render()">Ver resultados →</button>`
+        : `<button class="btn btn-primary" onclick="startProcessing()" ${state.processing?'disabled':''}>
+            ${state.processing ? 'Processando...' : 'Iniciar classificação →'}
+          </button>`
+      }
+    </div>
+  </div>`;
+}
+
+function renderStep5() {
+  const results = state.results;
+  const total = results.length;
+  const low = results.filter(r=>r._conf==='Baixa').length;
+  const med = results.filter(r=>r._conf==='Média').length;
+  const high = results.filter(r=>r._conf==='Alta').length;
+  const baseFields = ['nome','email','telefone','empresa'].filter(f=>state.colMap[f]).map(f=>({key:f,col:state.colMap[f]}));
+  const slaNames = state.slaFields.map(f=>f.name);
+  const allHeaders = [...baseFields.map(f=>f.col), ...slaNames, 'Observação IA'];
+
+  return `
+  <div class="card">
+    <h2>Resultado da classificação</h2>
+    <div class="stats">
+      <div class="stat-card"><div class="stat-num conf-high">${high}</div><div class="stat-lbl">confiança alta</div></div>
+      <div class="stat-card"><div class="stat-num conf-med">${med}</div><div class="stat-lbl">confiança média</div></div>
+      <div class="stat-card"><div class="stat-num conf-low">${low}</div><div class="stat-lbl">revisar</div></div>
+    </div>
+    ${low > 0 ? `<div class="alert alert-warn">Registros com confiança Baixa estão marcados em amarelo. Revise antes de importar no RD.</div>` : ''}
+    <div class="table-wrap">
+      <table>
+        <thead><tr>${allHeaders.map(h=>`<th style="min-width:120px">${h}</th>`).join('')}<th>Confiança</th></tr></thead>
+        <tbody>
+          ${results.slice(0,30).map(r=>{
+            const conf = r._conf;
+            const rowCls = conf==='Baixa'?' class="result-row-low"':'';
+            return `<tr${rowCls}>${allHeaders.map(h=>`<td title="${r[h]||''}">${r[h]||''}</td>`).join('')}<td><span class="badge ${conf==='Alta'?'badge-ok':conf==='Média'?'badge-warn':'badge-err'}">${conf}</span></td></tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+      ${total > 30 ? `<div style="font-size:12px;color:#666;margin-top:8px;text-align:center">Mostrando 30 de ${total} registros</div>` : ''}
+    </div>
+    <div class="actions" style="margin-top:1.25rem">
+      <button class="btn" onclick="state.step=4;state.results=[];state.progress=0;render()">← Reprocessar</button>
+      <button class="btn" onclick="downloadInternal()">↓ Versão revisão (com confiança)</button>
+      <button class="btn btn-primary" onclick="downloadRD()">↓ Versão RD Station (pronta para importar)</button>
+    </div>
+  </div>`;
+}
+
+function autoDetect() {
+  const map = {};
+  const h = state.headers.map(x=>x.toLowerCase());
+  const find = (terms) => state.headers[h.findIndex(x=>terms.some(t=>x.includes(t)))] || null;
+  map.nome = find(['nome','name']);
+  map.email = find(['email','e-mail']);
+  map.telefone = find(['telefone','fone','phone','cel','whats']);
+  map.empresa = find(['empresa','company','organiz']);
+  return map;
+}
+
+function aptRows() {
+  const emailCol = state.colMap.email;
+  if(!emailCol) return state.rows;
+  return state.rows.filter(r => {
+    const v = r[emailCol];
+    return v && String(v).includes('@');
+  });
+}
+
+function addSlaField() {
+  state.slaFields.push({name:'',type:'single',options:[],instruction:''});
+  render();
+}
+
+function removeSlaField(i) {
+  state.slaFields.splice(i,1);
+  render();
+}
+
+function addOption(fi, val) {
+  const v = val.trim();
+  if(!v) return;
+  if(!state.slaFields[fi].options) state.slaFields[fi].options = [];
+  if(!state.slaFields[fi].options.includes(v)) {
+    state.slaFields[fi].options.push(v);
+    render();
+  }
+}
+
+function removeOption(fi, oi) {
+  state.slaFields[fi].options.splice(oi,1);
+  render();
+}
+
+function goStep2() {
+  const auto = autoDetect();
+  ['nome','email','telefone','empresa'].forEach(f => {
+    if(!state.colMap[f] && auto[f]) state.colMap[f] = auto[f];
+  });
+  state.step = 2;
+  render();
+}
+
+function goStep3() {
+  const emailCol = state.colMap.email;
+  if(!emailCol) { alert('O campo E-mail é obrigatório. Selecione a coluna correta antes de continuar.'); return; }
+  state.step = 3;
+  render();
+}
+
+function goStep4() {
+  const invalid = state.slaFields.filter(f => !f.name || !f.options || !f.options.length);
+  if(invalid.length) { alert('Todos os campos SLA precisam de nome e ao menos uma opção válida.'); return; }
+  const dupNames = state.slaFields.map(f=>f.name).filter((n,i,a)=>a.indexOf(n)!==i);
+  if(dupNames.length) { alert('Existem campos SLA com o mesmo nome: '+dupNames.join(', ')); return; }
+  state.step = 4;
+  render();
+}
+
+async function startProcessing() {
+  state.processing = true;
+  state.progress = 0;
+  state.results = [];
+  render();
+
+  const rows = aptRows();
+  const total = rows.length;
+  const batchSize = 5;
+  const results = [];
+
+  for(let i=0; i<total; i+=batchSize) {
+    const batch = rows.slice(i, i+batchSize);
+    const batchResults = await Promise.all(batch.map(row => classifyRow(row)));
+    results.push(...batchResults);
+    state.progress = Math.min(100, Math.round(((i+batchSize)/total)*100));
+    if(i % 10 === 0) { state.results = [...results]; render(); }
+  }
+
+  state.results = results;
+  state.processing = false;
+  state.progress = 100;
+  render();
+}
+
+async function classifyRow(row) {
+  const rowData = {};
+  Object.entries(state.colMap).forEach(([k,v]) => { if(v) rowData[k] = row[v] || ''; });
+
+  const fieldsPrompt = state.slaFields.map(f => {
+    const allData = Object.entries(row).map(([k,v])=>`${k}: ${v}`).join('\n');
+    return `Campo: ${f.name}\nTipo: ${f.type==='multiple'?'múltipla seleção':'seleção única'}\nOpções válidas: ${f.options.join(', ')}\nInstrução: ${f.instruction||'Analisar os dados disponíveis'}\nDados do contato:\n${allData}`;
+  }).join('\n\n---\n\n');
+
+  const prompt = `Você é um classificador de leads. Classifique o contato nos campos SLA abaixo.
+REGRAS ABSOLUTAS:
+- Retorne SOMENTE valores da lista de opções válidas de cada campo
+- Para seleção única: retorne exatamente 1 opção
+- Para múltipla seleção: retorne 1 ou mais opções válidas separadas por vírgula
+- Se não houver evidência suficiente, retorne "REVISAR"
+- Respeite maiúsculas, acentos e espaços exatamente como nas opções
+
+${fieldsPrompt}
+
+Responda em JSON puro, sem markdown, no formato:
+{"campos": [{"nome": "NOME_DO_CAMPO", "valor": "VALOR_SELECIONADO", "confianca": "Alta|Média|Baixa", "observacao": "razão breve"}]}`;
+
+  try {
+    const res = await fetch('/proxy', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.map(c=>c.text||'').join('') || '{}';
+    const clean = text.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean);
+
+    const result = {...rowData};
+    let confScores = [];
+    let obs = [];
+
+    (parsed.campos||[]).forEach(c => {
+      result[c.nome] = c.valor;
+      confScores.push(c.confianca);
+      if(c.observacao) obs.push(`${c.nome}: ${c.observacao}`);
+    });
+
+    const confPriority = {'Baixa':0,'Média':1,'Alta':2};
+    const minConf = confScores.reduce((a,b)=>confPriority[a]<confPriority[b]?a:b, 'Alta');
+    result._conf = minConf;
+    result['Observação IA'] = obs.join(' | ');
+    return result;
+  } catch(e) {
+    const result = {...rowData};
+    state.slaFields.forEach(f => { result[f.name] = 'REVISAR'; });
+    result._conf = 'Baixa';
+    result['Observação IA'] = 'Erro no processamento';
+    return result;
+  }
+}
+
+function downloadRD() {
+  const baseFields = ['nome','email','telefone','empresa'].filter(f=>state.colMap[f]).map(f=>({key:f,col:state.colMap[f]}));
+  const slaNames = state.slaFields.map(f=>f.name);
+  const headers = [...baseFields.map(f=>f.col), ...slaNames];
+  const rows = state.results.map(r => {
+    const row = {};
+    baseFields.forEach(f => { row[f.col] = r[f.key] || r[f.col] || ''; });
+    slaNames.forEach(n => { row[n] = r[n] || ''; });
+    return row;
+  });
+  exportXlsx(headers, rows, 'rd_sla_mapper_importacao_rd.xlsx');
+}
+
+function downloadInternal() {
+  const baseFields = ['nome','email','telefone','empresa'].filter(f=>state.colMap[f]).map(f=>({key:f,col:state.colMap[f]}));
+  const slaNames = state.slaFields.map(f=>f.name);
+  const headers = [...baseFields.map(f=>f.col), ...slaNames, 'Observação IA', 'Confiança'];
+  const rows = state.results.map(r => {
+    const row = {};
+    baseFields.forEach(f => { row[f.col] = r[f.key] || r[f.col] || ''; });
+    slaNames.forEach(n => { row[n] = r[n] || ''; });
+    row['Observação IA'] = r['Observação IA'] || '';
+    row['Confiança'] = r._conf || '';
+    return row;
+  });
+  exportXlsx(headers, rows, 'rd_sla_mapper_revisao_interna.xlsx');
+}
+
+function exportXlsx(headers, rows, filename) {
+  const wsData = [headers, ...rows.map(r => headers.map(h => r[h] || ''))];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = headers.map(() => ({wch:22}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Leads');
+  XLSX.writeFile(wb, filename);
+}
+
+function parseFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const wb = XLSX.read(e.target.result, {type:'binary'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(ws, {defval:''});
+        if(!data.length) { reject('Planilha vazia ou sem registros.'); return; }
+        resolve({rows: data, headers: Object.keys(data[0])});
+      } catch(err) { reject('Erro ao ler o arquivo: '+err.message); }
+    };
+    reader.onerror = () => reject('Falha ao carregar o arquivo.');
+    reader.readAsBinaryString(file);
+  });
+}
+
+function bindEvents() {
+  const fi = document.getElementById('file-input');
+  if(fi) fi.onchange = async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    state.errors = [];
+    try {
+      const {rows, headers} = await parseFile(file);
+      state.file = file;
+      state.rows = rows;
+      state.headers = headers;
+      state.colMap = {nome:null,email:null,telefone:null,empresa:null};
+    } catch(err) {
+      state.errors = [err];
+      state.file = null; state.rows = []; state.headers = [];
+    }
+    render();
+  };
+}
+
+render();
+</script>
+</body>
+</html>
